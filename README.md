@@ -33,7 +33,7 @@ docker run -p 8123:8123 -v $(pwd)/my-config.json:/app/config/default.json alainp
 
 ```bash
 # Apply the deployment directly from GitHub
-kubectl apply -f https://raw.githubusercontent.com/alainpham/flow-logs-generator/main/k8s/deployment.yaml
+kubectl apply -f https://raw.githubusercontent.com/alainpham/flow-logs-generator/refs/heads/master/k8s/deployment.yaml
 ```
 
 
