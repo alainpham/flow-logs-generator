@@ -40,9 +40,8 @@
     }
   ],
   "trafficSchedule": [
-    { "startHour": 0, "endHour": 3, "instancesPerMinute": 5 },
-    { "startHour": 3, "endHour": 6, "instancesPerMinute": 6, "errorRatio": 0.05 }
-    ,
+    { "startHour": 0, "endHour": 5, "instancesPerMinute": 5 },
+    { "startHour": 5, "endHour": 6, "instancesPerMinute": 9, "errorRatio": 0.05 },
     { "startHour": 6, "endHour": 9, "instancesPerMinute": 7 },
     { "startHour": 9, "endHour": 12, "instancesPerMinute": 10 },
     { "startHour": 12, "endHour": 14, "instancesPerMinute": 15},
