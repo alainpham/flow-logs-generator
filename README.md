@@ -14,7 +14,7 @@ npm install
 ### Using Node.js directly
 
 ```bash
-node src/index.js config/order-processing.json
+node src/index.js config/default.json
 ```
 
 The web viewer is enabled by default. Access it at: **http://localhost:8123**
@@ -22,7 +22,18 @@ The web viewer is enabled by default. Access it at: **http://localhost:8123**
 ### Using Docker
 
 ```bash
+# Run with default config
 docker run -p 8123:8123 alainpham/flow-logs-generator:latest
+
+# Use your own config (replace default.json)
+docker run -p 8123:8123 -v $(pwd)/my-config.json:/app/config/default.json alainpham/flow-logs-generator:latest
+```
+
+### Using Kubernetes
+
+```bash
+# Apply the deployment directly from GitHub
+kubectl apply -f https://raw.githubusercontent.com/alainpham/flow-logs-generator/main/k8s/deployment.yaml
 ```
 
 
@@ -50,7 +61,7 @@ The continuous mode simulates a full 24-hour period with traffic scheduling. You
 
 ```bash
 # Run and save logs to file
-node src/index.js config/order-processing.json -o logs.jsonl
+node src/index.js config/default.json -o logs.jsonl
 ```
 
 Press `Ctrl+C` to stop the simulation at any time.
@@ -59,10 +70,10 @@ Press `Ctrl+C` to stop the simulation at any time.
 
 ```bash
 # Run without web viewer
-node src/index.js config/order-processing.json --no-web
+node src/index.js config/default.json --no-web
 
 # Open web viewer on custom port
-node src/index.js config/order-processing.json --port 9000
+node src/index.js config/default.json --port 9000
 ```
 
 ### Web Viewer
@@ -285,13 +296,13 @@ Generate a visual DAG (Directed Acyclic Graph) of your process configuration:
 
 ```bash
 # Draw DAG
-node src/visualize.js config/order-processing.json
+node src/visualize.js config/default.json
 
 # Draw compact text mode
-node src/visualize.js config/order-processing.json -s
+node src/visualize.js config/default.json -s
 
 # List steps only
-node src/visualize.js config/order-processing.json --list
+node src/visualize.js config/default.json --list
 ```
 
 Example output with branching:
@@ -340,7 +351,7 @@ flow-logs-generator/
 ├── static/
 │   └── viewer.html    # Web-based force-directed graph (D3.js)
 └── config/
-    ├── order-processing.json   # Example: Order fulfillment process
+    ├── default.json   # Example: Order fulfillment process
     ├── user-registration.json  # Example: User registration process
     └── ecommerce-checkout.json # Example: Complex branching process
 ```
@@ -361,8 +372,11 @@ The web viewer is enabled by default. Access it at: **http://localhost:8123**
 
 ### Using a Different Config
 
+Replace the default config file by mounting your own:
+
 ```bash
-docker run -p 8123:8123 -v $(pwd)/config:/app/config alainpham/flow-logs-generator:latest node src/index.js config/user-registration.json
+# Mount your config file as default.json
+docker run -p 8123:8123 -v $(pwd)/config/my-config.json:/app/config/default.json alainpham/flow-logs-generator:latest
 ```
 
 ### Push to Docker Hub

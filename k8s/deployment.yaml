@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flow-logs-generator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flow-logs-generator
+  template:
+    metadata:
+      labels:
+        app: flow-logs-generator
+    spec:
+      containers:
+      - name: flow-logs-generator
+        image: alainpham/flow-logs-generator:latest
+        ports:
+        - containerPort: 8123
+        resources:
+          limits:
+            memory: "256Mi"
+            cpu: "250m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flow-logs-generator
+spec:
+  type: ClusterIP
+  selector:
+    app: flow-logs-generator
+  ports:
+  - port: 8123
+    targetPort: 8123
