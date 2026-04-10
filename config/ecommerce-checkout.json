@@ -1,0 +1,69 @@
+{
+  "name": "E-Commerce Checkout",
+  "errorRatio": 0.2,
+  "steps": [
+    {
+      "name": "validateCart",
+      "avgDuration": 6000,
+      "stdDeviation": 1500,
+      "dependencies": []
+    },
+    {
+      "name": "checkStock",
+      "avgDuration": 9000,
+      "stdDeviation": 1500,
+      "dependencies": ["validateCart"]
+    },
+    {
+      "name": "calcShipping",
+      "avgDuration": 7000,
+      "stdDeviation": 1500,
+      "dependencies": ["validateCart"]
+    },
+    {
+      "name": "calcTax",
+      "avgDuration": 8000,
+      "stdDeviation": 1500,
+      "dependencies": ["validateCart"]
+    },
+    {
+      "name": "applyDiscounts",
+      "avgDuration": 5000,
+      "stdDeviation": 1500,
+      "dependencies": ["checkStock", "calcShipping", "calcTax"]
+    },
+    {
+      "name": "processPayment",
+      "avgDuration": 10000,
+      "stdDeviation": 1500,
+      "dependencies": ["applyDiscounts"]
+    },
+    {
+      "name": "updateInventory",
+      "avgDuration": 6500,
+      "stdDeviation": 1500,
+      "dependencies": ["processPayment"]
+    },
+    {
+      "name": "generateInvoice",
+      "avgDuration": 7500,
+      "stdDeviation": 1500,
+      "dependencies": ["processPayment"]
+    },
+    {
+      "name": "sendEmail",
+      "avgDuration": 8500,
+      "stdDeviation": 1500,
+      "dependencies": ["updateInventory", "generateInvoice"]
+    }
+  ],
+  "trafficSchedule": [
+    { "startHour": 0, "endHour": 6, "instancesPerMinute": 1 },
+    { "startHour": 6, "endHour": 9, "instancesPerMinute": 2 },
+    { "startHour": 9, "endHour": 12, "instancesPerMinute": 3 },
+    { "startHour": 12, "endHour": 14, "instancesPerMinute": 3 },
+    { "startHour": 14, "endHour": 17, "instancesPerMinute": 4 },
+    { "startHour": 17, "endHour": 20, "instancesPerMinute": 2 },
+    { "startHour": 20, "endHour": 24, "instancesPerMinute": 1 }
+  ]
+}

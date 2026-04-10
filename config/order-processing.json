@@ -1,0 +1,51 @@
+{
+  "name": "Order Processing",
+  "errorRatio": 0.15,
+  "steps": [
+    {
+      "name": "validateOrder",
+      "avgDuration": 7000,
+      "stdDeviation": 1500,
+      "dependencies": []
+    },
+    {
+      "name": "checkInventory",
+      "avgDuration": 8000,
+      "stdDeviation": 1500,
+      "dependencies": ["validateOrder"]
+    },
+    {
+      "name": "processPayment",
+      "avgDuration": 6000,
+      "stdDeviation": 1500,
+      "dependencies": ["validateOrder"]
+    },
+    {
+      "name": "reserveItems",
+      "avgDuration": 9000,
+      "stdDeviation": 1500,
+      "dependencies": ["checkInventory", "processPayment"]
+    },
+    {
+      "name": "updateStock",
+      "avgDuration": 5000,
+      "stdDeviation": 1500,
+      "dependencies": ["reserveItems"]
+    },
+    {
+      "name": "sendConfirmation",
+      "avgDuration": 7500,
+      "stdDeviation": 1500,
+      "dependencies": ["updateStock"]
+    }
+  ],
+  "trafficSchedule": [
+    { "startHour": 0, "endHour": 6, "instancesPerMinute": 5 },
+    { "startHour": 6, "endHour": 9, "instancesPerMinute": 7 },
+    { "startHour": 9, "endHour": 12, "instancesPerMinute": 10 },
+    { "startHour": 12, "endHour": 14, "instancesPerMinute": 15, "errorRatio": 0.05 },
+    { "startHour": 14, "endHour": 17, "instancesPerMinute": 18, "errorRatio": 0.05 },
+    { "startHour": 17, "endHour": 20, "instancesPerMinute": 8, "errorRatio": 0.05},
+    { "startHour": 20, "endHour": 24, "instancesPerMinute": 3 }
+  ]
+}

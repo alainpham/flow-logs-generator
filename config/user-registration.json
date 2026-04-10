@@ -1,0 +1,43 @@
+{
+  "name": "User Registration",
+  "errorRatio": 0.1,
+  "steps": [
+    {
+      "name": "validateInput",
+      "avgDuration": 6000,
+      "stdDeviation": 1500,
+      "dependencies": []
+    },
+    {
+      "name": "checkEmailExists",
+      "avgDuration": 8000,
+      "stdDeviation": 1500,
+      "dependencies": ["validateInput"]
+    },
+    {
+      "name": "hashPassword",
+      "avgDuration": 7000,
+      "stdDeviation": 1500,
+      "dependencies": ["validateInput"]
+    },
+    {
+      "name": "createUser",
+      "avgDuration": 9000,
+      "stdDeviation": 1500,
+      "dependencies": ["checkEmailExists", "hashPassword"]
+    },
+    {
+      "name": "sendWelcomeEmail",
+      "avgDuration": 5000,
+      "stdDeviation": 1500,
+      "dependencies": ["createUser"]
+    }
+  ],
+  "trafficSchedule": [
+    { "startHour": 0, "endHour": 6, "instancesPerMinute": 1 },
+    { "startHour": 6, "endHour": 9, "instancesPerMinute": 5, "errorRatio": 0.05 },
+    { "startHour": 9, "endHour": 17, "instancesPerMinute": 10, "errorRatio": 0.2 },
+    { "startHour": 17, "endHour": 20, "instancesPerMinute": 5, "errorRatio": 0.15 },
+    { "startHour": 20, "endHour": 24, "instancesPerMinute": 1 }
+  ]
+}

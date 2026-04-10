@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Process Flow Visualization</title>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7.8.5/dist/d3.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html, body {
+            height: 100vh;
+            overflow: hidden;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e4e4e4;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            height: 60px;
+            flex-shrink: 0;
+            background: #1a1a2e;
+            padding: 0 30px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #fff;
+            margin: 0;
+        }
+        .header .subtitle {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 3px;
+        }
+        .stats-bar {
+            height: 50px;
+            flex-shrink: 0;
+            display: flex;
+            gap: 25px;
+            padding: 0 30px;
+            align-items: center;
+            background: #16213e;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .stat-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: #ccc;
+            letter-spacing: 0.5px;
+        }
+        .stat-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        .stat-value.steps { color: #ff6b6b; }
+        .stat-value.deps { color: #95e1d3; }
+        .stat-value.depth { color: #f9ca24; }
+        .stat-value.rate { color: #48dbfb; }
+        .stat-value.total { color: #a29bfe; }
+        .stat-value.scheduled { color: #a29bfe; }
+        .stat-value.started { color: #feca57; }
+        .stat-value.running { color: #feca57; }
+        .stat-value.success { color: #1dd1a1; }
+        .stat-value.failed { color: #ff6b6b; }
+        .stat-value.success-rate { color: #feca57; }
+        .stat-value.error-rate { color: #feca57; }
+        .stat-value.error-rate-custom { color: #aaa; font-size: 0.65rem; margin-left: 4px; }
+        .connection-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ff6b6b;
+            margin-left: 8px;
+        }
+        .stat-group {
+            display: flex;
+            gap: 20px;
+        }
+        .separator {
+            width: 1px;
+            height: 30px;
+            background: rgba(255, 255, 255, 0.2);
+            align-self: center;
+            margin: 0 10px;
+        }
+        .main-container {
+            height: calc(100vh - 110px);
+            display: flex;
+            overflow: hidden;
+            width: 100%;
+            background: #1a1a2e;
+        }
+        .process-panel {
+            width: 400px;
+            min-width: 400px;
+            flex-shrink: 0;
+            background: #16213e;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-height: 0;
+        }
+        .process-panel h3 {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: #666;
+            letter-spacing: 0.5px;
+            margin-bottom: 0;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .process-panel-header {
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .process-table-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        .process-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.7rem;
+        }
+        .process-table th {
+            text-align: left;
+            padding: 6px 8px;
+            color: #888;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: sticky;
+            top: 0;
+            background: rgba(0, 0, 0, 0.2);
+        }
+        .process-table td {
+            padding: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            vertical-align: top;
+        }
+        .process-table tr:hover td {
+            background: rgba(255, 255, 255, 0.03);
+        }
+        .process-id {
+            font-family: monospace;
+            color: #4ecdc4;
+            font-size: 0.65rem;
+        }
+        .process-status {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.6rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .process-status.running {
+            background: rgba(254, 202, 87, 0.2);
+            color: #feca57;
+        }
+        .process-status.success {
+            background: rgba(29, 209, 161, 0.2);
+            color: #1dd1a1;
+        }
+        .process-status.failed {
+            background: rgba(255, 107, 107, 0.2);
+            color: #ff6b6b;
+        }
+        .process-status.created {
+            background: rgba(160, 160, 160, 0.2);
+            color: #aaa;
+        }
+        .current-step {
+            color: #feca57;
+            font-weight: 500;
+            font-size: 0.75rem;
+        }
+        .elapsed-time {
+            color: #48dbfb;
+            font-family: monospace;
+            font-size: 0.75rem;
+        }
+        .graph-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            height: 100%;
+        }
+        .graph-container svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        .sidebar {
+            width: 320px;
+            min-width: 280px;
+            flex-shrink: 0;
+            background: #16213e;
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            overflow-y: auto;
+            padding: 20px;
+            min-height: 0;
+        }
+        .sidebar h3 {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: #666;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .controls {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        .controls button {
+            flex: 1;
+            padding: 6px 10px;
+            background: rgba(78, 205, 196, 0.15);
+            border: 1px solid rgba(78, 205, 196, 0.3);
+            color: #4ecdc4;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: all 0.2s;
+        }
+        .controls button:hover {
+            background: rgba(78, 205, 196, 0.25);
+        }
+        .controls button.active {
+            background: #4ecdc4;
+            color: #1a1a2e;
+        }
+        .step-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .step-item {
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 8px;
+            padding: 10px 12px;
+            border-left: 3px solid;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .step-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateX(3px);
+        }
+        .step-item.level-0 { border-color: #ff6b6b; }
+        .step-item.level-1 { border-color: #feca57; }
+        .step-item.level-2 { border-color: #48dbfb; }
+        .step-item.level-3 { border-color: #1dd1a1; }
+        .step-item.level-4 { border-color: #5f27cd; }
+        .step-item.level-5 { border-color: #ff9ff3; }
+        .step-name {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #fff;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .entry-badge {
+            background: #4ecdc4;
+            color: #1a1a2e;
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-size: 0.6rem;
+            font-weight: 600;
+        }
+        .step-meta {
+            display: flex;
+            gap: 12px;
+            font-size: 0.7rem;
+            color: #ccc;
+        }
+        .step-deps {
+            margin-top: 6px;
+            font-size: 0.7rem;
+            color: #ccc;
+        }
+        .step-deps strong {
+            color: #4ecdc4;
+        }
+        .node circle {
+            stroke-width: 3px;
+            transition: all 0.2s;
+        }
+        .node:hover circle {
+            stroke-width: 5px;
+            filter: brightness(1.2);
+        }
+        .node text {
+            font-size: 11px;
+            font-weight: 500;
+            fill: #e0e0e0;
+            pointer-events: none;
+        }
+        .node-count {
+            font-size: 14px;
+            font-weight: 700;
+            fill: #1a1a2e;
+            pointer-events: none;
+        }
+        .link {
+            stroke: rgba(255, 255, 255, 0.2);
+            stroke-width: 2px;
+            fill: none;
+        }
+        .link-label {
+            font-size: 9px;
+            fill: #666;
+        }
+        .color-legend {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .color-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.65rem;
+            color: #666;
+        }
+        .color-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 100;
+            max-width: 250px;
+        }
+        .tooltip.visible {
+            opacity: 1;
+        }
+        .tooltip .title {
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #4ecdc4;
+        }
+        .tooltip .row {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            margin: 2px 0;
+        }
+        .tooltip .label {
+            color: #ccc;
+        }
+        .tooltip .value {
+            font-weight: 500;
+        }
+        .drag-hint {
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+            background: rgba(0,0,0,0.5);
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 0.7rem;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1 id="processName">Process Flow</h1>
+            <div class="subtitle">Force-directed graph visualization</div>
+        </div>
+    </div>
+    
+    <div class="stats-bar">
+        <div class="stat">
+            <span class="stat-label">Time</span>
+            <span class="connection-dot" id="connectionDot"></span>
+            <span class="stat-value" id="currentTime">--:--:--</span>
+        </div>
+        <div class="stat-group">
+            <div class="stat">
+                <span class="stat-label">Rate</span>
+                <span class="stat-value rate" id="currentRate">0/min</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Target Error Ratio</span>
+                <span class="stat-value error-rate-custom" id="errorRateCustom" style="display:none">(custom) </span><span class="stat-value error-rate" id="errorRate">-%</span>
+            </div>
+        </div>
+        <div class="separator"></div>
+        <div class="stat">
+            <span class="stat-label">Scheduled</span>
+            <span class="stat-value scheduled" id="totalProcesses">0</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">Started</span>
+            <span class="stat-value started" id="startedProcesses">0</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">Running</span>
+            <span class="stat-value running" id="runningProcesses">0</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">Success</span>
+            <span class="stat-value success" id="successfulProcesses">0</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">Failed</span>
+            <span class="stat-value failed" id="failedProcesses">0</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">Success Rate</span>
+            <span class="stat-value success-rate" id="successRate">-%</span>
+        </div>
+    </div>
+    
+    <div class="main-container">
+        <div class="process-panel">
+            <div class="process-panel-header">
+                <h3>Running Processes</h3>
+            </div>
+            <div class="process-table-container">
+                <table class="process-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Status</th>
+                            <th>Current</th>
+                            <th>Elapsed</th>
+                        </tr>
+                    </thead>
+                    <tbody id="processTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="graph-container" id="graphContainer">
+            <div class="drag-hint">Drag nodes to rearrange</div>
+        </div>
+        
+        <div class="sidebar">
+            <h3>Steps</h3>
+            <div class="controls">
+                <button id="sortLevel" class="active">By Level</button>
+                <button id="sortAlpha">A-Z</button>
+            </div>
+            <div class="step-list" id="stepList"></div>
+            
+            <div class="color-legend">
+                <div class="color-legend-item"><div class="color-dot" style="background:#ff6b6b"></div>Level 0</div>
+                <div class="color-legend-item"><div class="color-dot" style="background:#feca57"></div>Level 1</div>
+                <div class="color-legend-item"><div class="color-dot" style="background:#48dbfb"></div>Level 2</div>
+                <div class="color-legend-item"><div class="color-dot" style="background:#1dd1a1"></div>Level 3</div>
+                <div class="color-legend-item"><div class="color-dot" style="background:#5f27cd"></div>Level 4</div>
+                <div class="color-legend-item"><div class="color-dot" style="background:#ff9ff3"></div>Level 5</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        const config = CONFIG_DATA;
+        
+        const levelColors = [
+            '#ff6b6b', '#feca57', '#48dbfb', '#1dd1a1', '#5f27cd', '#ff9ff3',
+            '#a29bfe', '#fd79a8', '#00b894', '#e17055', '#74b9ff', '#55a3ff'
+        ];
+        
+        function topologicalSort(steps) {
+            const sorted = [];
+            const visited = new Set();
+            const visiting = new Set();
+            const stepMap = new Map(steps.map(s => [s.name, s]));
+            
+            function visit(name) {
+                if (visited.has(name)) return;
+                if (visiting.has(name)) throw new Error(`Circular: ${name}`);
+                visiting.add(name);
+                const step = stepMap.get(name);
+                if (step) {
+                    for (const dep of step.dependencies) visit(dep);
+                }
+                visiting.delete(name);
+                visited.add(name);
+                sorted.push(name);
+            }
+            
+            for (const step of steps) visit(step.name);
+            return sorted;
+        }
+        
+        function assignLevels(nodes, sortedNames) {
+            const levels = new Map();
+            const visited = new Set();
+            
+            function assignLevel(name, level) {
+                if (visited.has(name)) {
+                    if (level > levels.get(name)) levels.set(name, level);
+                    return;
+                }
+                visited.add(name);
+                levels.set(name, level);
+            }
+            
+            for (const name of sortedNames) {
+                if (!nodes.get(name).dependencies.length) assignLevel(name, 0);
+            }
+            
+            let changed = true;
+            while (changed) {
+                changed = false;
+                for (const name of sortedNames) {
+                    const node = nodes.get(name);
+                    if (node.dependencies.length === 0) continue;
+                    const maxDepLevel = Math.max(...node.dependencies.map(d => levels.get(d) ?? -1));
+                    if (maxDepLevel >= 0) {
+                        const currentLevel = levels.get(name) ?? -1;
+                        if (maxDepLevel + 1 > currentLevel) {
+                            assignLevel(name, maxDepLevel + 1);
+                            changed = true;
+                        }
+                    }
+                }
+            }
+            return levels;
+        }
+        
+        const nodes = new Map();
+        const links = [];
+        
+        for (const step of config.steps) {
+            nodes.set(step.name, {
+                name: step.name,
+                avgDuration: step.avgDuration,
+                stdDeviation: step.stdDeviation,
+                dependencies: step.dependencies
+            });
+            for (const dep of step.dependencies) {
+                links.push({ source: dep, target: step.name });
+            }
+        }
+        
+        const sortedNames = topologicalSort(config.steps);
+        const levels = assignLevels(nodes, sortedNames);
+        const maxLevel = Math.max(...levels.values(), 0);
+        const nodesPerLevel = {};
+        for (const name of sortedNames) {
+            const level = levels.get(name);
+            if (!nodesPerLevel[level]) nodesPerLevel[level] = [];
+            nodesPerLevel[level].push(name);
+        }
+        
+        document.getElementById('processName').textContent = config.name;
+
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${wsProtocol}//${window.location.host}`;
+        
+        function updateConnectionStatus(connected) {
+            const dot = document.getElementById('connectionDot');
+            dot.style.background = connected ? '#1dd1a1' : '#ff6b6b';
+        }
+        
+        function connectWebSocket() {
+            const ws = new WebSocket(wsUrl);
+            
+            ws.onopen = () => {
+                updateConnectionStatus(true);
+            };
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'stats') {
+                    const time = new Date(data.time);
+                    document.getElementById('currentTime').textContent = 
+                        `${time.getHours().toString().padStart(2, '0')}:${time.getMinutes().toString().padStart(2, '0')}:${time.getSeconds().toString().padStart(2, '0')}`;
+                    document.getElementById('currentRate').textContent = `${data.rate}/min`;
+                    document.getElementById('totalProcesses').textContent = data.scheduled;
+                    document.getElementById('startedProcesses').textContent = data.started;
+                    document.getElementById('runningProcesses').textContent = data.running;
+                    document.getElementById('successfulProcesses').textContent = data.success;
+                    document.getElementById('failedProcesses').textContent = data.failed;
+                    
+                    if (data.started > 0) {
+                        const rate = ((data.success / data.started) * 100).toFixed(1);
+                        document.getElementById('successRate').textContent = `${rate}%`;
+                    }
+                    if (data.errorRate !== undefined) {
+                        document.getElementById('errorRate').textContent = `${(data.errorRate * 100).toFixed(0)}%`;
+                        document.getElementById('errorRateCustom').style.display = data.errorRateCustom ? 'inline' : 'none';
+                    }
+                    
+                    if (data.processList) {
+                        updateProcessTable(data.processList);
+                    }
+                    if (data.stepCounts) {
+                        updateNodeCounts(data.stepCounts);
+                    }
+                }
+            };
+
+            ws.onclose = () => {
+                updateConnectionStatus(false);
+                console.log('WebSocket disconnected, reconnecting in 5 seconds...');
+                setTimeout(connectWebSocket, 5000);
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+        }
+        
+        connectWebSocket();
+        
+        function updateNodeCounts(stepCounts) {
+            d3.selectAll('.node').each(function(d) {
+                const count = stepCounts[d.id] || 0;
+                const textEl = d3.select(this).select('.node-count');
+                const bgEl = d3.select(this).select('.count-bg');
+                textEl.text(count);
+                if (count >= 1) {
+                    textEl.style('font-weight', 'bold').style('fill', '#1dd1a1').style('font-size', '18px');
+                    bgEl.attr('width', 25).attr('height', 20).attr('x', -12).attr('y', -10);
+                } else {
+                    textEl.style('font-weight', 'normal').style('fill', '#e0e0e0').style('font-size', '14px');
+                    bgEl.attr('width', 20).attr('height', 16).attr('x', -10).attr('y', -8);
+                }
+            });
+        };
+        
+        function updateProcessTable(processList) {
+            const tbody = document.getElementById('processTableBody');
+            if (!processList || processList.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#666;padding:20px;">No running processes</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = processList.map(proc => {
+                const elapsed = proc.elapsed ? `${(proc.elapsed / 1000).toFixed(1)}s` : '-';
+                const currentStep = proc.currentStep;
+                const stepLevel = currentStep ? levels.get(currentStep) : null;
+                const stepColor = stepLevel !== null && stepLevel !== undefined ? levelColors[stepLevel % levelColors.length] : '#666';
+                const stepDisplay = currentStep ? 
+                    `<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:${stepColor};flex-shrink:0;"></span><span style="background:#333;color:#fff;padding:2px 6px;border-radius:3px;">${currentStep}</span></span>` : 
+                    '-';
+                return `
+                    <tr>
+                        <td class="process-id">${proc.processId}</td>
+                        <td><span class="process-status ${proc.status}">${proc.status}</span></td>
+                        <td class="current-step">${stepDisplay}</td>
+                        <td class="elapsed-time">${elapsed}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        const margin = { top: 60, right: 100, bottom: 60, left: 100 };
+        const container = document.getElementById('graphContainer');
+        const containerWidth = container.clientWidth;
+        const containerHeight = container.clientHeight;
+        const width = containerWidth - margin.left - margin.right;
+        const height = containerHeight - margin.top - margin.bottom;
+        
+        const nodeSpacingX = width / (maxLevel + 1);
+        const maxNodesInLevel = Math.max(...Object.values(nodesPerLevel).map(arr => arr.length));
+        const nodeSpacingY = height / (maxNodesInLevel + 1);
+        
+        const graphData = {
+            nodes: Array.from(nodes.keys()).map(name => {
+                const node = nodes.get(name);
+                const level = levels.get(name);
+                const nodesAtLevel = nodesPerLevel[level];
+                const indexInLevel = nodesAtLevel.indexOf(name);
+                const totalInLevel = nodesAtLevel.length;
+                
+                const centerOffset = (totalInLevel - 1) / 2;
+                const x = margin.left + (level + 1) * nodeSpacingX;
+                const y = margin.top + (indexInLevel - centerOffset) * nodeSpacingY + nodeSpacingY / 2;
+                
+                return {
+                    id: name,
+                    level: level,
+                    color: levelColors[level % levelColors.length],
+                    duration: node.avgDuration,
+                    stdDev: node.stdDeviation,
+                    deps: node.dependencies,
+                    fx: x,
+                    fy: y,
+                    x: x,
+                    y: y
+                };
+            }),
+            links: links.map(l => ({ source: l.source, target: l.target }))
+        };
+        
+        const svg = d3.select('#graphContainer')
+            .append('svg')
+            .attr('width', containerWidth)
+            .attr('height', containerHeight)
+            .call(d3.zoom().on('zoom', (event) => {
+                g.attr('transform', event.transform);
+            }));
+        
+        const g = svg.append('g');
+        
+        const simulation = d3.forceSimulation(graphData.nodes)
+            .force('link', d3.forceLink(graphData.links).id(d => d.id).distance(120).strength(0.8))
+            .force('x', d3.forceX(d => d.fx).strength(0.95))
+            .force('y', d3.forceY(d => d.fy).strength(0.95))
+            .force('charge', d3.forceManyBody().strength(-200))
+            .force('collision', d3.forceCollide().radius(55))
+            .alphaDecay(0.02);
+        
+        simulation.stop();
+        for (let i = 0; i < 100; i++) simulation.tick();
+        graphData.nodes.forEach(d => { d.fx = null; d.fy = null; });
+        simulation.alpha(0.3).restart();
+        
+        const link = g.append('g')
+            .selectAll('line')
+            .data(graphData.links)
+            .enter()
+            .append('line')
+            .attr('class', 'link');
+        
+        const node = g.append('g')
+            .selectAll('g')
+            .data(graphData.nodes)
+            .enter()
+            .append('g')
+            .attr('class', 'node')
+            .call(d3.drag()
+                .on('start', dragstarted)
+                .on('drag', dragged)
+                .on('end', dragended));
+        
+        node.append('circle')
+            .attr('r', 25)
+            .attr('fill', d => d.color)
+            .attr('stroke', d => d.color)
+            .attr('stroke-opacity', 0.3);
+        
+        node.append('text')
+            .attr('dy', 40)
+            .attr('text-anchor', 'middle')
+            .attr('class', 'node-label')
+            .text(d => d.id.length > 14 ? d.id.substring(0, 12) + '…' : d.id);
+        
+        node.append('rect')
+            .attr('class', 'count-bg')
+            .attr('y', -8)
+            .attr('x', -10)
+            .attr('width', 20)
+            .attr('height', 16)
+            .attr('rx', 3)
+            .attr('fill', 'rgba(0, 0, 0, 0.7)');
+        
+        const nodeCountText = node.append('text')
+            .attr('dy', 5)
+            .attr('text-anchor', 'middle')
+            .attr('class', 'node-count')
+            .text('0');
+        
+        const tooltip = document.getElementById('tooltip');
+        
+        node.on('mouseover', (event, d) => {
+            tooltip.innerHTML = `
+                <div class="title">${d.id}</div>
+                <div class="row"><span class="label">Duration:</span><span class="value">${d.duration}ms (±${d.stdDev}ms)</span></div>
+                ${d.deps.length > 0 ? `<div class="row"><span class="label">Depends on:</span><span class="value">${d.deps.join(', ')}</span></div>` : ''}
+            `;
+            tooltip.classList.add('visible');
+        })
+        .on('mousemove', (event) => {
+            tooltip.style.left = (event.pageX + 15) + 'px';
+            tooltip.style.top = (event.pageY - 10) + 'px';
+        })
+        .on('mouseout', () => {
+            tooltip.classList.remove('visible');
+        });
+        
+        simulation.on('tick', () => {
+            link
+                .attr('x1', d => d.source.x)
+                .attr('y1', d => d.source.y)
+                .attr('x2', d => d.target.x)
+                .attr('y2', d => d.target.y);
+            
+            node.attr('transform', d => `translate(${d.x},${d.y})`);
+        });
+        
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+        
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+        
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+        
+        function renderStepList(sortBy = 'level') {
+            const stepList = document.getElementById('stepList');
+            let steps = [...config.steps];
+            
+            if (sortBy === 'alpha') {
+                steps.sort((a, b) => a.name.localeCompare(b.name));
+            } else {
+                steps.sort((a, b) => levels.get(a.name) - levels.get(b.name));
+            }
+            
+            stepList.innerHTML = steps.map(step => {
+                const level = levels.get(step.name);
+                const isEntry = step.dependencies.length === 0;
+                return `
+                    <div class="step-item level-${level % 6}">
+                        <div class="step-name">
+                            ${step.name}
+                            ${isEntry ? '<span class="entry-badge">ENTRY</span>' : ''}
+                        </div>
+                            <div class="step-meta">
+                            <span>⏱ ${step.avgDuration}ms</span>
+                            <span>📊 ±${step.stdDeviation}ms</span>
+                        </div>
+                        ${step.dependencies.length > 0 ? `
+                            <div class="step-deps">from: <strong>${step.dependencies.join(', ')}</strong></div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        document.getElementById('sortLevel').addEventListener('click', () => {
+            document.getElementById('sortLevel').classList.add('active');
+            document.getElementById('sortAlpha').classList.remove('active');
+            renderStepList('level');
+        });
+        
+        document.getElementById('sortAlpha').addEventListener('click', () => {
+            document.getElementById('sortAlpha').classList.add('active');
+            document.getElementById('sortLevel').classList.remove('active');
+            renderStepList('alpha');
+        });
+        
+        renderStepList('level');
+        
+        window.addEventListener('resize', () => {
+            location.reload();
+        });
+    </script>
+</body>
+</html>
