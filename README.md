@@ -31,14 +31,11 @@ docker run -p 8123:8123 alainpham/flow-logs-generator:latest
 ### Basic Commands
 
 ```bash
-# Run with a configuration file
+# Run with configuration (web + continuous loop by default)
 node src/index.js <config-path>
 
-# Run multiple simulations
-node src/index.js <config-path> -n <count>
-
-# Run continuous 24h simulation loop
-node src/index.js <config-path> --loop
+# Run without web viewer
+node src/index.js <config-path> --no-web
 
 # Save output to a file
 node src/index.js <config-path> -o <output-file>
@@ -49,17 +46,11 @@ node src/index.js --list
 
 ### Continuous Mode
 
-The continuous mode simulates a full 24-hour period with traffic scheduling. You define how many process instances should run per minute for different time boxes throughout the day.
+The continuous mode simulates a full 24-hour period with traffic scheduling. You define how many process instances should run per minute for different time boxes throughout the day. The simulation loops continuously.
 
 ```bash
-# Run continuous 24h loop with default speed (60 simulated minutes per real second)
-node src/index.js config/order-processing.json --loop
-
-# Run faster (300 simulated minutes per real second = 5 simulated hours per real second)
-node src/index.js config/order-processing.json --loop --speed 300
-
 # Run and save logs to file
-node src/index.js config/order-processing.json --loop -o logs.jsonl
+node src/index.js config/order-processing.json -o logs.jsonl
 ```
 
 Press `Ctrl+C` to stop the simulation at any time.
@@ -67,17 +58,8 @@ Press `Ctrl+C` to stop the simulation at any time.
 ### Examples
 
 ```bash
-# Run a single simulation
-node src/index.js config/order-processing.json
-
-# Run 10 simulations and save to file
-node src/index.js config/order-processing.json -n 10 -o logs.jsonl
-
-# Run continuous simulation with default speed
-node src/index.js config/order-processing.json --loop
-
-# Run continuous simulation at 10x speed
-node src/index.js config/order-processing.json --loop --speed 600
+# Run without web viewer
+node src/index.js config/order-processing.json --no-web
 
 # Open web viewer on custom port
 node src/index.js config/order-processing.json --port 9000

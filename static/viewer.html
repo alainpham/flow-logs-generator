@@ -659,10 +659,10 @@
                 const bgEl = d3.select(this).select('.count-bg');
                 textEl.text(count);
                 if (count >= 1) {
-                    textEl.style('font-weight', 'bold').style('fill', '#1dd1a1').style('font-size', '18px');
+                    textEl.style('font-weight', 'bold').style('fill', '#1dd1a1').style('font-size', '18px').attr('dy', 6);
                     bgEl.attr('width', 25).attr('height', 20).attr('x', -12).attr('y', -10);
                 } else {
-                    textEl.style('font-weight', 'normal').style('fill', '#e0e0e0').style('font-size', '14px');
+                    textEl.style('font-weight', 'normal').style('fill', '#e0e0e0').style('font-size', '14px').attr('dy', 5);
                     bgEl.attr('width', 20).attr('height', 16).attr('x', -10).attr('y', -8);
                 }
             });

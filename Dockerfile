@@ -10,4 +10,4 @@ COPY . .
 
 EXPOSE 8123
 
-CMD ["node", "src/index.js", "config/order-processing.json"]
+CMD ["node", "src/index.js", "config/default.json"]

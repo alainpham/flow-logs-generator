@@ -296,35 +296,31 @@ function showUsage() {
 Flow Logs Generator - Business Process Simulator
 
 Usage:
-  node src/index.js <config-file>            Run single simulation
-  node src/index.js <config-file> -n <num>  Run N simulations
-  node src/index.js <config-file> --loop    Run continuous 24h loop
-  node src/index.js <config-file> --web     Open web viewer with force-directed graph
-  node src/index.js <config-file> --web --port <N>  Custom port (default: 8123)
-  node src/index.js <config-file> -o <file> Output logs to file
-  node src/index.js --list                  List available configurations
+  node src/index.js <config-file>              Run with web viewer (default)
+  node src/index.js <config-file> --no-web     Run without web viewer
+  node src/index.js <config-file> --port <N>  Custom port (default: 8123)
+  node src/index.js <config-file> -o <file>    Output logs to file
+  node src/index.js --list                     List available configurations
 
 Examples:
   node src/index.js config/order-processing.json
-  node src/index.js config/order-processing.json -n 10
-  node src/index.js config/order-processing.json --loop
-  node src/index.js config/order-processing.json --web
-  node src/index.js config/order-processing.json --web --port 8080
+  node src/index.js config/order-processing.json --no-web
+  node src/index.js config/order-processing.json --port 8080
 
 Configuration Format (JSON):
   {
     "name": "Process Name",
+    "errorRatio": 0.1,
     "steps": [
       {
         "name": "stepName",
         "avgDuration": 1000,
         "stdDeviation": 100,
-        "errorRatio": 0.05,
         "dependencies": ["otherStep"]
       }
     ],
     "trafficSchedule": [
-      { "startHour": 0, "endHour": 6, "instancesPerMinute": 2 },
+      { "startHour": 0, "endHour": 6, "instancesPerMinute": 2, "errorRatio": 0.05 },
       { "startHour": 6, "endHour": 9, "instancesPerMinute": 10 }
     ]
   }
@@ -333,6 +329,7 @@ Traffic Schedule (for continuous mode):
   - Define hourly time boxes with instances per minute rates
   - The simulation will loop through the 24h schedule
   - Each minute, the specified number of process instances are started
+  - Optional errorRatio per timeslot overrides process-level errorRatio
 `);
 }
 
@@ -352,29 +349,19 @@ function main() {
   }
 
   let configPath = args[0];
-  let numSimulations = null;
   let outputFile = null;
-  let continuousMode = false;
   let webMode = true;
   let webPort = 8123;
-  let speed = 60;
-  let loop24h = true;
 
   for (let i = 1; i < args.length; i++) {
-    if (args[i] === '-n' && i + 1 < args.length && !args[i + 1].startsWith('-')) {
-      numSimulations = parseInt(args[++i], 10);
-    } else if (args[i] === '-o' && i + 1 < args.length) {
+    if (args[i] === '-o' && i + 1 < args.length) {
       outputFile = args[++i];
-    } else if (args[i] === '--loop') {
-      continuousMode = true;
     } else if (args[i] === '--web') {
       webMode = true;
+    } else if (args[i] === '--no-web') {
+      webMode = false;
     } else if (args[i] === '--port' && i + 1 < args.length) {
       webPort = parseInt(args[++i], 10);
-    } else if (args[i] === '--speed' && i + 1 < args.length) {
-      speed = parseInt(args[++i], 10);
-    } else if (args[i] === '--no-loop' || args[i] === '--once') {
-      loop24h = false;
     } else if (!args[i].startsWith('-')) {
       configPath = args[i];
     }
@@ -388,21 +375,12 @@ function main() {
     }
   }
 
-  const options = { outputFile, speed, loop24h, port: webPort };
+  const options = { outputFile, port: webPort };
 
   if (webMode) {
     startWebViewer(configPath, options);
-  } else if (continuousMode) {
-    runContinuousSimulation(configPath, options)
-      .catch(err => {
-        console.error('Error:', err.message);
-        process.exit(1);
-      });
   } else {
-    if (numSimulations === null) {
-      numSimulations = 1;
-    }
-    runMultipleSimulations(configPath, numSimulations, options)
+    runContinuousSimulation(configPath, options)
       .catch(err => {
         console.error('Error:', err.message);
         process.exit(1);
